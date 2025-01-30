@@ -1,0 +1,140 @@
+version: '3.8'
+services:
+  #################################################################
+  # Zookeeper (Bitnami, with 인증 + admin 권한 부여)
+  #################################################################
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      # 1) 인증 활성화
+      - ZOO_ENABLE_AUTH=yes
+      # 2) Zookeeper "admin" 계정 등록
+      #    - ZOO_SERVER_ADMIN_USERS : admin 권한을 가질 사용자 목록(콤마 구분)
+      #    - ZOO_SERVER_ADMIN_PASSWORDS : 위 사용자들의 패스워드 목록(콤마 구분)
+      # 여기서는 "user"를 admin으로 쓸 것이므로, 아래처럼 설정
+      - ZOO_SERVER_ADMIN_USERS=user
+      - ZOO_SERVER_ADMIN_PASSWORDS=bitnami
+      # 일반 사용자 부분은 필요 없다면 생략 가능(=admin 사용자만 등록)
+      # 혹시 여러 유저를 쓰고 싶다면 ZOO_SERVER_USERS=..., ZOO_SERVER_PASSWORDS=... 로 별도로 지정
+      # 3) Kafka 브로커가 접속 시 사용할 '클라이언트' 계정/비번
+      #    - 보통 admin 계정과 동일하게 해 줍니다.
+      - ZOO_CLIENT_USER=user
+      - ZOO_CLIENT_PASSWORD=bitnami
+
+  #################################################################
+  # Kafka1 (Bitnami, SASL/PLAIN 활성화)
+  #################################################################
+  kafka1:
+    image: bitnami/kafka:latest
+    container_name: kafka1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      - KAFKA_BROKER_ID=1
+      # Zookeeper 접속용 (admin 권한이 있는 user)
+      - KAFKA_ZOOKEEPER_USER=user
+      - KAFKA_ZOOKEEPER_PASSWORD=bitnami
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      # ----- Kafka에서 SASL/PLAIN 설정 -----
+      - KAFKA_CFG_SASL_ENABLED_MECHANISMS=PLAIN
+      - KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=PLAIN
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,SASL_PLAINTEXT://0.0.0.0:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,SASL_PLAINTEXT://localhost:9093
+      # 브로커 내부 통신용 username/password 및 클라이언트용 유저 선언
+      - KAFKA_CFG_SASL_JAAS_CONFIG=org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="broker" \
+        password="brokerpass" \
+        user_broker="brokerpass" \
+        user_user="userpass";
+      # 로컬 테스트 용
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      # 3대 브로커 클러스터 시 권장 replication 설정
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+
+  #################################################################
+  # Kafka2
+  #################################################################
+  kafka2:
+    image: bitnami/kafka:latest
+    container_name: kafka2
+    depends_on:
+      - zookeeper
+    ports:
+      - "9094:9092"
+      - "9095:9093"
+    environment:
+      - KAFKA_BROKER_ID=2
+
+      - KAFKA_ZOOKEEPER_USER=user
+      - KAFKA_ZOOKEEPER_PASSWORD=bitnami
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+
+      - KAFKA_CFG_SASL_ENABLED_MECHANISMS=PLAIN
+      - KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=PLAIN
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,SASL_PLAINTEXT://0.0.0.0:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9094,SASL_PLAINTEXT://localhost:9095
+
+      - KAFKA_CFG_SASL_JAAS_CONFIG=org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="broker" \
+        password="brokerpass" \
+        user_broker="brokerpass" \
+        user_user="userpass";
+
+      - ALLOW_PLAINTEXT_LISTENER=yes
+
+      # replication
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+
+  #################################################################
+  # Kafka3
+  #################################################################
+  kafka3:
+    image: bitnami/kafka:latest
+    container_name: kafka3
+    depends_on:
+      - zookeeper
+    ports:
+      - "9096:9092"
+      - "9097:9093"
+    environment:
+      - KAFKA_BROKER_ID=3
+
+      - KAFKA_ZOOKEEPER_USER=user
+      - KAFKA_ZOOKEEPER_PASSWORD=bitnami
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+
+      - KAFKA_CFG_SASL_ENABLED_MECHANISMS=PLAIN
+      - KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=PLAIN
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,SASL_PLAINTEXT://0.0.0.0:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9096,SASL_PLAINTEXT://localhost:9097
+
+      - KAFKA_CFG_SASL_JAAS_CONFIG=org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="broker" \
+        password="brokerpass" \
+        user_broker="brokerpass" \
+        user_user="userpass";
+
+      - ALLOW_PLAINTEXT_LISTENER=yes
+
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
