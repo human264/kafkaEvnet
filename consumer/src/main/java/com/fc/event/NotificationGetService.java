@@ -16,7 +16,13 @@ public class NotificationGetService {
     @Autowired
     private NotificationRepository repository;
 
-    public Optional<Notification> getNotification(NotificationType type, long commentId) {
+    public Optional<Notification> getNotificationByTypeAndCommentId(NotificationType type, long commentId) {
         return repository.findByTypeAndCommentId(type, commentId);
     }
+
+
+    public Optional<Notification> getNotificationByTypeAndPostId(NotificationType type, long postId) {
+        return repository.findByTypeAndCommentId(type, postId);
+    }
+
 }
